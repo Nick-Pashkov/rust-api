@@ -3,11 +3,14 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 
 mod threading;
+mod request;
+
 use threading::ThreadPool;
+use request::Request;
 
 pub struct Server {
-    host: String,
-    port: u16,
+    pub host: String,
+    pub port: u16,
     pool_size: usize,
 }
 
@@ -24,10 +27,12 @@ impl Server {
         self.pool_size = size;
     }
 
-    pub fn listen(&self) {
+    pub fn listen<F>(&self, f: F) where F: Fn() {
         let addr = format!("{}{}{}", self.host, ":", self.port);
         let listener = TcpListener::bind(addr).unwrap();
         let pool = ThreadPool::new(self.pool_size);
+
+        f();
 
         for stream in listener.incoming() {
             pool.execute(|| {
@@ -40,7 +45,9 @@ impl Server {
 fn handler(mut stream: TcpStream) {
 
     let (request, size) = read_stream(&mut stream);
-    println!("Bytes: {:?} Size: {}", String::from_utf8_lossy(&request), size);
+    let request = Request::new(String::from_utf8_lossy(&request).to_string());
+
+    println!("Size: {}", size);
 
     let response = "HTTP/1.1 200 OK\r\n\r\n";
     stream.write(response.as_bytes()).unwrap();

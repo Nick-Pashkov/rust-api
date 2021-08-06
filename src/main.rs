@@ -7,7 +7,7 @@ fn main() {
     server.set_pool_size(8);
 
     // Start listening
-    server.listen();
-
-    println!("Shutting down");
+    server.listen(|| {
+        println!("Server listening on {}:{}", server.host, server.port);
+    });
 }
