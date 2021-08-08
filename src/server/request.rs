@@ -1,55 +1,66 @@
 use std::str::FromStr;
+use std::result::Result;
+use std::collections::HashMap;
+
+use crate::server::errors::RequestError;
 
 pub struct Request {
     method: RequestMethods,
-    path: String,
+    pub path: String,
+    headers: HashMap<String, String>,
     body: String,
 }
 
-enum Errors {
-    MethodUnsupported { details: String },
-}
-
-#[derive(Debug)]
-enum RequestMethods {
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum RequestMethods {
     GET, POST, PUT, DELETE, PATCH
 }
 
 impl FromStr for RequestMethods {
-    type Err = Errors;
+    type Err = RequestError;
 
-    fn from_str(s: &str) -> Result<RequestMethods, Errors> {
+    fn from_str(s: &str) -> Result<RequestMethods, RequestError> {
         match s {
             "GET" => Ok(RequestMethods::GET),
             "POST" => Ok(RequestMethods::POST),
             "PUT" => Ok(RequestMethods::PUT),
             "DELETE" => Ok(RequestMethods::DELETE),
             "PATCH" => Ok(RequestMethods::PATCH),
-            _ => Err(Errors::MethodUnsupported { details: String::from("Method unsupported") })
+            _ => Err(RequestError::new("Invalid request method", s))
         }
     }
 }
 
 impl Request {
-    pub fn new(input: String) -> Request {
+    pub fn new(input: String) -> Result<Request, RequestError> {
 
-        let input: Vec<&str> = input.lines().collect();
+        let mut input = input.lines();
         
         // Request line
-        let line: Vec<&str> = input[0].split_whitespace().collect();
+        let line: Vec<&str> = input.next().expect("Invalid HTTP Request").split_whitespace().collect();
         
-        let method = line[0].parse::<RequestMethods>();
-        match method {
-            Ok(m) => m,
-            Err(e) => println!("Invalid")
-        };
+        let method = line[0].parse::<RequestMethods>()?;
 
         let path = String::from(line[1]);
+        let mut headers = HashMap::new();
+
+        // Get all headers in a loop
+        loop {
+            match input.next() {
+                Some(header) => {
+                    if header == "" {
+                        break;
+                    }
+
+                    let header: Vec<&str> = header.split(": ").collect(); 
+                    headers.insert(String::from(header[0]), String::from(header[1]));
+                }
+                None => break
+            }
+        }
         
-        let body = String::default();
+        let body = input.collect::<Vec<&str>>().join("\n");
 
-        println!("{:?}", input);
-
-        Request { method, path, body }
+        Ok(Request { method, path, headers, body })
     }
 }
