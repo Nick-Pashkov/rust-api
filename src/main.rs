@@ -4,10 +4,11 @@ use server::Server;
 
 fn main() {
     // Create server
-    let server = Server::new("127.0.0.1", 4000);
+    let mut server = Server::new("127.0.0.1", 4000);
 
-    server.get("/", || {
-        println!("Get / method");
+    server.get("/", |request, response| {
+        println!("Get {}", request.path);
+        response.send("Hola".to_string());
     });
 
     // Start listening

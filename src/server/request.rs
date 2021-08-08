@@ -1,11 +1,12 @@
 use std::str::FromStr;
 use std::result::Result;
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::server::errors::RequestError;
 
 pub struct Request {
-    method: RequestMethods,
+    pub method: RequestMethods,
     pub path: String,
     headers: HashMap<String, String>,
     body: String,
@@ -28,6 +29,12 @@ impl FromStr for RequestMethods {
             "PATCH" => Ok(RequestMethods::PATCH),
             _ => Err(RequestError::new("Invalid request method", s))
         }
+    }
+}
+
+impl fmt::Display for RequestMethods {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

@@ -8,6 +8,7 @@ use crate::server::Handler;
 use crate::server::threading::ThreadPool;
 use crate::server::request::Request;
 use crate::server::request::RequestMethods;
+use crate::server::response::Response;
 
 impl Server {
     pub fn new(host: &str, port: u16) -> Server {
@@ -27,7 +28,7 @@ impl Server {
 
         f(&addr);
 
-        let handlers: Arc<Mutex<Vec<Handler>>> = Arc::clone(&self.handlers);
+        let handlers = Arc::clone(&self.handlers);
 
         for stream in listener.incoming() {
             let clone = Arc::clone(&handlers);
@@ -37,10 +38,14 @@ impl Server {
         }
     }
 
-    pub fn get<F>(&self, path: &str, f: F) where F: Fn() + Send + Sync + 'static {
+    pub fn get<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+        self.create_handler(path, RequestMethods::GET, f);
+    }
+
+    fn create_handler<F>(&mut self, path: &str, method: RequestMethods, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
         let handler = Handler {
             path: path.to_string(),
-            method: RequestMethods::GET,
+            method,
             handler: Box::new(f),
         };
 
@@ -59,16 +64,24 @@ fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
             println!("Size: {}", size);
 
             let handlers = handlers.lock().unwrap();
+            let mut handler_exists = false;
 
-            for i in 0..handlers.len() {
-                if request.path == handlers[i].path {
-                    let handler = &handlers[i].handler;
-                    handler();
+            let mut response = Response::new(&stream);
+
+            for handler in handlers.iter() {
+                if request.path == handler.path && request.method == handler.method {
+                    handler_exists = true;
+                    let handler = &handler.handler;
+                    
+                    handler(&request, &mut response);
                 }
             }
 
-            let response = "HTTP/1.1 200 OK\r\n\r\n";
-            stream.write(response.as_bytes()).unwrap();
+            if !handler_exists {
+                response.status = 404;
+                response.send(format!("Cannot {} {}", request.method, request.path));
+            }
+
             stream.flush().unwrap();
         }
         Err(e) => { println!("{}", e); }
