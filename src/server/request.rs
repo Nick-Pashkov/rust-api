@@ -2,14 +2,17 @@ use std::str::FromStr;
 use std::result::Result;
 use std::collections::HashMap;
 use std::fmt;
+use serde_json::{Value as JsonValue};
 
 use crate::server::errors::RequestError;
+use crate::server::BodyTypes;
 
 pub struct Request {
     pub method: RequestMethods,
     pub path: String,
     headers: HashMap<String, String>,
-    body: String,
+    pub body: BodyTypes,
+    pub size: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -39,7 +42,7 @@ impl fmt::Display for RequestMethods {
 }
 
 impl Request {
-    pub fn new(input: String) -> Result<Request, RequestError> {
+    pub fn new(input: String, size: usize) -> Result<Request, RequestError> {
 
         let mut input = input.lines();
         
@@ -66,8 +69,29 @@ impl Request {
             }
         }
         
-        let body = input.collect::<Vec<&str>>().join("\n");
+        let body_str = input.collect::<Vec<&str>>().join("\n");
+        let content_type = headers.get(&"Content-Type".to_string());
+        let body: BodyTypes;
 
-        Ok(Request { method, path, headers, body })
+        match content_type {
+            Some(content_type) => {
+                body = parse_body(body_str, String::from(content_type));
+            }
+            None => {
+                body = BodyTypes::Text(body_str);
+            }
+        }
+
+        Ok(Request { method, path, headers, body, size })
+    }
+}
+
+fn parse_body(body: String, content_type: String) -> BodyTypes {
+    
+    let content_type = String::from(content_type);
+    if content_type == "application/json" {
+        return BodyTypes::Json(serde_json::from_str(&body).unwrap());
+    } else {
+        return BodyTypes::Text(String::from(body));
     }
 }

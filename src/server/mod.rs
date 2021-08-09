@@ -1,4 +1,6 @@
 use std::sync::{Arc, Mutex};
+use serde_json::{Value as JsonValue};
+
 mod server;
 mod request;
 mod response;
@@ -8,6 +10,12 @@ mod errors;
 use request::RequestMethods;
 use request::Request;
 use response::Response;
+
+#[derive(Debug)]
+pub enum BodyTypes {
+    Text(String),
+    Json(JsonValue),
+}
 
 pub struct Handler {
     method: RequestMethods,

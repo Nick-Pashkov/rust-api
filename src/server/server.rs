@@ -3,11 +3,9 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 
-use crate::server::Server;
-use crate::server::Handler;
+use crate::server::{Server, Handler, BodyTypes};
 use crate::server::threading::ThreadPool;
-use crate::server::request::Request;
-use crate::server::request::RequestMethods;
+use crate::server::request::{Request, RequestMethods};
 use crate::server::response::Response;
 
 impl Server {
@@ -57,12 +55,10 @@ impl Server {
 fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
 
     let (request, size) = read_stream(&mut stream);
-    let request = Request::new(String::from_utf8_lossy(&request).to_string());
+    let request = Request::new(String::from_utf8_lossy(&request).to_string(), size);
 
     match request {
         Ok(request) => {
-            println!("Size: {}", size);
-
             let handlers = handlers.lock().unwrap();
             let mut handler_exists = false;
 
@@ -79,7 +75,7 @@ fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
 
             if !handler_exists {
                 response.status = 404;
-                response.send(format!("Cannot {} {}", request.method, request.path));
+                response.send(BodyTypes::Text(format!("Cannot {} {}", request.method, request.path)));
             }
 
             stream.flush().unwrap();
