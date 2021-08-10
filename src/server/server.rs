@@ -1,9 +1,7 @@
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::sync::{Arc, RwLock};
 
 use crate::server::{Server, Handler, BodyTypes};
 use crate::server::threading::ThreadPool;
@@ -16,7 +14,7 @@ impl Server {
 
         let pool_size = 4;
 
-        let handlers = Arc::new(Mutex::new(Vec::new()));
+        let handlers = Arc::new(RwLock::new(Vec::new()));
 
         Server { host, port, pool_size, handlers }
     }
@@ -47,12 +45,12 @@ impl Server {
             handler: Box::new(f),
         };
 
-        let mut handlers = self.handlers.lock().unwrap();
+        let mut handlers = self.handlers.write().unwrap();
         handlers.push(handler)
     }
 }
 
-fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
+fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>) {
 
     let (request, size) = read_stream(&mut stream);
     let request = Request::new(String::from_utf8_lossy(&request).to_string(), size);
@@ -64,16 +62,13 @@ fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
             
             let mut response = Response::new(&stream);
             
-            let handlers = handlers.lock().unwrap();
+            let handlers = handlers.read().unwrap();
 
             for handler in handlers.iter() {
                 if request.path == handler.path && request.method == handler.method {
                     handler_exists = true;
                     let handler = &handler.handler;
-                    
-                    if request.path == "/sleep" {
-                        thread::sleep(Duration::from_secs(5));
-                    }
+
                     handler(&request, &mut response);
                     break;
                 }

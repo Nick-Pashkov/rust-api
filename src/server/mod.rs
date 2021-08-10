@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use serde_json::{Value as JsonValue};
 
 mod server;
@@ -27,5 +27,5 @@ pub struct Server {
     pub host: String,
     pub port: u16,
     pool_size: usize,
-    handlers: Arc<Mutex<Vec<Handler>>>,
+    handlers: Arc<RwLock<Vec<Handler>>>,
 }

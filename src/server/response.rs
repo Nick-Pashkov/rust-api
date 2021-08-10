@@ -30,7 +30,7 @@ impl <'a> Response <'_> {
         let version = "HTTP/1.1";
         let mut headers = String::from("");
 
-        let mut body: String;
+        let body: String;
         match data {
             BodyTypes::Text(b) => {
                 self.set_header("Content-Type", "text/plain");

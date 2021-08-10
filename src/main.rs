@@ -18,6 +18,7 @@ fn main() {
     });
 
     server.get("/sleep", |request, response| {
+        thread::sleep(Duration::from_secs(5));
         response.send(BodyTypes::Text("Ok".to_string()));
     });
 
