@@ -2,6 +2,8 @@ use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use crate::server::{Server, Handler, BodyTypes};
 use crate::server::threading::ThreadPool;
@@ -26,10 +28,8 @@ impl Server {
 
         f(&addr);
 
-        let handlers = Arc::clone(&self.handlers);
-
         for stream in listener.incoming() {
-            let clone = Arc::clone(&handlers);
+            let clone = Arc::clone(&self.handlers);
             pool.execute(move || {
                 handler(stream.unwrap(), clone);
             });
@@ -59,17 +59,23 @@ fn handler(mut stream: TcpStream, handlers: Arc<Mutex<Vec<Handler>>>) {
 
     match request {
         Ok(request) => {
-            let handlers = handlers.lock().unwrap();
             let mut handler_exists = false;
-
+            println!("request {}", request.path);
+            
             let mut response = Response::new(&stream);
+            
+            let handlers = handlers.lock().unwrap();
 
             for handler in handlers.iter() {
                 if request.path == handler.path && request.method == handler.method {
                     handler_exists = true;
                     let handler = &handler.handler;
                     
+                    if request.path == "/sleep" {
+                        thread::sleep(Duration::from_secs(5));
+                    }
                     handler(&request, &mut response);
+                    break;
                 }
             }
 

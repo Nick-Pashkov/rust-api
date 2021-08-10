@@ -1,6 +1,8 @@
 mod server;
 use server::Server;
 use server::BodyTypes;
+use std::thread;
+use std::time::Duration;
 
 use serde_json::json;
 
@@ -9,12 +11,14 @@ fn main() {
     let mut server = Server::new("127.0.0.1", 4000);
 
     server.get("/", |request, response| {
-        println!("{:?}", request.body);
-
         let res = json!({
             "name": "Nikita Pashkov"
         });
         response.send(BodyTypes::Json(res));
+    });
+
+    server.get("/sleep", |request, response| {
+        response.send(BodyTypes::Text("Ok".to_string()));
     });
 
     // Start listening
