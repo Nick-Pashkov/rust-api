@@ -1,6 +1,5 @@
 mod server;
-use server::Server;
-use server::BodyTypes;
+use server::{Server, BodyTypes};
 use std::thread;
 use std::time::Duration;
 
@@ -12,14 +11,19 @@ fn main() {
 
     server.get("/", |request, response| {
         let res = json!({
-            "name": "Nikita Pashkov"
+            "name": "Nikita"
         });
         response.send(BodyTypes::Json(res));
     });
 
+    server.get("/search", |request, response| {
+        let params = json!(&request.params);
+        response.send(BodyTypes::Json(params));
+    });
+
     server.get("/sleep", |request, response| {
         thread::sleep(Duration::from_secs(5));
-        response.send(BodyTypes::Text("Ok".to_string()));
+        response.send(BodyTypes::Text("Hola".to_string()));
     });
 
     // Start listening
