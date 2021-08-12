@@ -16,10 +16,9 @@ fn main() {
     });
 
     server.get("/", |request, response| {
-        let res = json!({
-            "name": "Nikita"
-        });
-        response.send(BodyTypes::Json(res));
+        let res = json!("Hola");
+        println!("{}", res);
+        response.send_v2(res);
     });
 
     server.post("/create", |request, response| {
