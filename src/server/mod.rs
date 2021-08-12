@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use serde_json::{Value as JsonValue};
 
 mod server;
@@ -11,6 +11,8 @@ use request::RequestMethods;
 use request::Request;
 use response::Response;
 
+type HandlerFunction = Box<dyn Fn(&Request, &mut Response) + Send + Sync + 'static>;
+
 #[derive(Debug)]
 pub enum BodyTypes {
     Text(String),
@@ -20,7 +22,7 @@ pub enum BodyTypes {
 pub struct Handler {
     method: RequestMethods,
     path: String,
-    handler: Box<dyn Fn(&Request, &mut Response) + Send + Sync>,
+    handler: HandlerFunction,
 }
 
 pub struct Server {
@@ -28,4 +30,5 @@ pub struct Server {
     pub port: u16,
     pool_size: usize,
     handlers: Arc<RwLock<Vec<Handler>>>,
+    middleware: Arc<RwLock<Vec<HandlerFunction>>>
 }

@@ -3,7 +3,7 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
-use crate::server::{Server, Handler, BodyTypes};
+use crate::server::{Server, Handler, BodyTypes, HandlerFunction};
 use crate::server::threading::ThreadPool;
 use crate::server::request::{Request, RequestMethods};
 use crate::server::response::Response;
@@ -16,7 +16,9 @@ impl Server {
 
         let handlers = Arc::new(RwLock::new(Vec::new()));
 
-        Server { host, port, pool_size, handlers }
+        let middleware = Arc::new(RwLock::new(Vec::new()));
+
+        Server { host, port, pool_size, handlers, middleware }
     }
 
     pub fn listen<F>(&self, f: F) where F: FnOnce(&String) {
@@ -27,15 +29,25 @@ impl Server {
         f(&addr);
 
         for stream in listener.incoming() {
-            let clone = Arc::clone(&self.handlers);
+            let cloneHandlers = Arc::clone(&self.handlers);
+            let cloneMiddleware = Arc::clone(&self.middleware);
             pool.execute(move || {
-                handler(stream.unwrap(), clone);
+                handler(stream.unwrap(), cloneHandlers, cloneMiddleware);
             });
         }
     }
 
+    pub fn middleware<F>(&mut self, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+        let mut middleware = self.middleware.write().unwrap();
+        middleware.push(Box::new(f))
+    }
+
     pub fn get<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
         self.create_handler(path, RequestMethods::GET, f);
+    }
+
+    pub fn post<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+        self.create_handler(path, RequestMethods::POST, f);
     }
 
     fn create_handler<F>(&mut self, path: &str, method: RequestMethods, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
@@ -50,7 +62,7 @@ impl Server {
     }
 }
 
-fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>) {
+fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewares: Arc<RwLock<Vec<HandlerFunction>>>) {
 
     let (request, size) = read_stream(&mut stream);
     let request = Request::new(String::from_utf8_lossy(&request).to_string(), size);
@@ -58,11 +70,16 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>) {
     match request {
         Ok(request) => {
             let mut handler_exists = false;
-            println!("request {}", request.path);
             
             let mut response = Response::new(&stream);
-            
+
+            let middlewares = middlewares.read().unwrap();
             let handlers = handlers.read().unwrap();
+
+            // Run middlewares
+            for middleware in middlewares.iter() {
+                middleware(&request, &mut response);
+            }
 
             for handler in handlers.iter() {
                 if request.path == handler.path && request.method == handler.method {

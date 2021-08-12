@@ -4,10 +4,16 @@ use std::thread;
 use std::time::Duration;
 
 use serde_json::json;
+use serde_json::{ Value as JsonValue };
 
 fn main() {
     // Create server
     let mut server = Server::new("127.0.0.1", 4000);
+
+    // Test middleware
+    server.middleware(|request, response| {
+        println!("This middleware runs on any request");
+    });
 
     server.get("/", |request, response| {
         let res = json!({
@@ -16,14 +22,8 @@ fn main() {
         response.send(BodyTypes::Json(res));
     });
 
-    server.get("/search", |request, response| {
-        let params = json!(&request.params);
-        response.send(BodyTypes::Json(params));
-    });
-
-    server.get("/sleep", |request, response| {
-        thread::sleep(Duration::from_secs(5));
-        response.send(BodyTypes::Text("Hola".to_string()));
+    server.post("/create", |request, response| {
+        response.send(BodyTypes::Text("Test".to_string()));
     });
 
     // Start listening

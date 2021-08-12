@@ -13,7 +13,7 @@ pub struct Request {
     pub path: String,
     pub headers: HashMap<String, String>,
     pub params: HashMap<String, String>,
-    pub body: BodyTypes,
+    body: String,
     pub size: usize,
 }
 
@@ -60,8 +60,6 @@ impl Request {
         let path = request_url[0].to_string();
         let params: HashMap<String, String> = if request_url.len() > 1 { parse_params(request_url[1].to_string()) } else { HashMap::new() };
 
-        println!("{:?}", params);
-
         let mut headers = HashMap::new();
 
         // Get all headers in a loop
@@ -79,10 +77,10 @@ impl Request {
             }
         }
         
-        let body_str = input.collect::<Vec<&str>>().join("\n");
+        let body = input.collect::<Vec<&str>>().join("\n");
         let content_type = headers.get(&"Content-Type".to_string());
-        let body: BodyTypes;
 
+        /*
         match content_type {
             Some(content_type) => {
                 body = parse_body(body_str, String::from(content_type));
@@ -91,11 +89,11 @@ impl Request {
                 body = BodyTypes::Text(body_str);
             }
         }
-
+        */
         Ok(Request { method, path, headers, params, body, size })
     }
 }
-
+/*
 fn parse_body(body: String, content_type: String) -> BodyTypes {
     
     let content_type = String::from(content_type);
@@ -105,7 +103,7 @@ fn parse_body(body: String, content_type: String) -> BodyTypes {
         return BodyTypes::Text(String::from(body));
     }
 }
-
+*/
 fn parse_params(input: String) -> HashMap<String, String> {
     let mut params: HashMap<String, String> = HashMap::new();
     if input == "" {
