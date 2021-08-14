@@ -1,4 +1,7 @@
 use std::io::prelude::*;
+use std::fs::File;
+use std::time::Instant;
+use std::io::{self, BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
@@ -62,10 +65,27 @@ impl Server {
     }
 }
 
+fn get_length(reader: &mut BufReader<TcpStream>) -> usize {
+    let mut str_buff = String::new();
+    loop {
+        reader.read_line(&mut str_buff).unwrap();
+        if str_buff.starts_with("Content-Length") {
+            let res: Vec<&str> = str_buff.split(":").collect();
+
+            reader.read_line(&mut String::new()).unwrap();
+
+            return res[1].trim().parse::<usize>().unwrap();
+        }
+        str_buff = "".to_string();
+    }
+}
+
 fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewares: Arc<RwLock<Vec<HandlerFunction>>>) {
 
-    let (request, size) = read_stream(&mut stream);
-    let request = Request::new(String::from_utf8_lossy(&request).to_string(), size);
+    let mut reader = BufReader::new(&stream);
+    
+    let request = Request::new(&mut reader);
+    //std::process::exit(0);
 
     match request {
         Ok(request) => {
@@ -103,7 +123,8 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
 }
 
 fn read_stream(stream: &mut TcpStream) -> (Vec<u8>, usize) {
-    let buffer_size = 512;
+
+    let buffer_size = 1024;
     let mut request_buffer = vec![];
     let mut request_length = 0usize;
 
@@ -117,10 +138,14 @@ fn read_stream(stream: &mut TcpStream) -> (Vec<u8>, usize) {
                     request_length += n;
 
                     if n < buffer_size {
+                        println!("Before {}", request_buffer.len());
                         request_buffer.append(&mut buffer[..n].to_vec());
+                        println!("After {}", request_buffer.len());
                         break;
                     } else {
+                        println!("Before {}", request_buffer.len());
                         request_buffer.append(&mut buffer);
+                        println!("After {}", request_buffer.len());
                     }
                 }
             }

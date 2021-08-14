@@ -17,6 +17,7 @@ type HandlerFunction = Box<dyn Fn(&Request, &mut Response) + Send + Sync + 'stat
 pub enum BodyTypes {
     Text(String),
     Json(JsonValue),
+    Bytes(Vec<u8>)
 }
 
 pub struct Handler {

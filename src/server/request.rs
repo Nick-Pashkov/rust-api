@@ -1,8 +1,11 @@
 use std::str::FromStr;
+use std::io::prelude::*;
+use std::io::{self, BufReader};
+use std::net::TcpStream;
 use std::result::Result;
 use std::collections::HashMap;
 use std::fmt;
-use serde_json::{Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use itertools::join;
 
 use crate::server::errors::RequestError;
@@ -11,10 +14,10 @@ use crate::server::BodyTypes;
 pub struct Request {
     pub method: RequestMethods,
     pub path: String,
-    pub headers: HashMap<String, String>,
-    pub params: HashMap<String, String>,
-    body: String,
-    pub size: usize,
+    headers: HashMap<String, String>,
+    //pub params: HashMap<String, String>,
+    body: Vec<u8>,
+   // pub size: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -44,66 +47,64 @@ impl fmt::Display for RequestMethods {
 }
 
 impl Request {
-    pub fn new(input: String, size: usize) -> Result<Request, RequestError> {
+    pub fn new(reader: &mut BufReader<&TcpStream>) -> Result<Request, RequestError> {
 
-        let request_str = input;
-        let mut input = request_str.lines();
-        
-        // Request line
-        let line: Vec<&str> = input.next().ok_or(
-            RequestError::new("Invalid request", &request_str)
-        )?.split_whitespace().collect();
-        
-        let method = line[0].parse::<RequestMethods>()?;
+        let (method, path) = get_line(reader);
+        println!("{}", method);
 
-        let request_url: Vec<&str> = line[1].split("?").collect();
-        let path = request_url[0].to_string();
-        let params: HashMap<String, String> = if request_url.len() > 1 { parse_params(request_url[1].to_string()) } else { HashMap::new() };
+        let headers = get_headers(reader);
 
-        let mut headers = HashMap::new();
+        let body = get_body(reader, headers.get("Content-Length").unwrap().parse().unwrap());
 
-        // Get all headers in a loop
-        loop {
-            match input.next() {
-                Some(header) => {
-                    if header == "" {
-                        break;
-                    }
+        Ok(Request { method, path, headers, body })
+    }
 
-                    let header: Vec<&str> = header.split(": ").collect(); 
-                    headers.insert(String::from(header[0]), String::from(header[1]));
-                }
-                None => break
-            }
-        }
-        
-        let body = input.collect::<Vec<&str>>().join("\n");
-        let content_type = headers.get(&"Content-Type".to_string());
+    pub fn body_as_bytes(&self) -> &Vec<u8> {
+        return &self.body;
+    }
 
-        /*
-        match content_type {
-            Some(content_type) => {
-                body = parse_body(body_str, String::from(content_type));
-            }
-            None => {
-                body = BodyTypes::Text(body_str);
-            }
-        }
-        */
-        Ok(Request { method, path, headers, params, body, size })
+    pub fn body_as_json(&self) -> JsonValue {
+        let body_str = String::from_utf8_lossy(&self.body);
+
+        serde_json::from_str(&body_str).unwrap()
+    }
+
+    pub fn get_header(&self, name: &str) -> Option<&String> {
+        self.headers.get(name)
     }
 }
-/*
-fn parse_body(body: String, content_type: String) -> BodyTypes {
+
+fn get_line(reader: &mut BufReader<&TcpStream>) -> (RequestMethods, String) {
+    let mut line_str = String::new();
+    reader.read_line(&mut line_str).unwrap();
+
+    let parts: Vec<&str> = line_str.split(" ").collect();
     
-    let content_type = String::from(content_type);
-    if content_type == "application/json" {
-        return BodyTypes::Json(serde_json::from_str(&body).unwrap());
-    } else {
-        return BodyTypes::Text(String::from(body));
+    (RequestMethods::from_str(parts[0]).unwrap(), parts[1].to_string())
+}
+
+fn get_headers(reader: &mut BufReader<&TcpStream>) -> HashMap<String, String> {
+    let mut result = HashMap::new();
+    let mut str_buff = String::new();
+    loop {
+        reader.read_line(&mut str_buff).unwrap();
+
+        if str_buff == "\r\n" {
+            return result;
+        }
+
+        let header: Vec<&str> = str_buff.split(": ").collect();
+        result.insert(String::from(header[0]), String::from(header[1].trim()));
+        str_buff = String::from("");
     }
 }
-*/
+
+fn get_body(reader: &mut BufReader<&TcpStream>, length: usize) -> Vec<u8> {
+    let mut buffer = vec![0; length];
+    reader.read_exact(&mut buffer).unwrap();
+    return buffer;
+}
+
 fn parse_params(input: String) -> HashMap<String, String> {
     let mut params: HashMap<String, String> = HashMap::new();
     if input == "" {

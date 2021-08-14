@@ -64,7 +64,8 @@ struct Worker {
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
-        let thread = thread::spawn(move || loop {
+        let thread_builder = thread::Builder::new().name(format!("Worker {}", id.to_string()));
+        let thread = thread_builder.spawn(move || loop {
             let message = receiver.lock().unwrap().recv().unwrap();
 
             match message {
@@ -79,7 +80,7 @@ impl Worker {
                     break;
                 }
             }
-        });
+        }).unwrap();
 
         Worker { id, thread: Some(thread) }
     }
