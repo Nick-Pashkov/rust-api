@@ -11,29 +11,24 @@ fn main() {
     // Create server
     let mut server = Server::new("127.0.0.1", 4000);
 
-    server.get("/", |request, response| {
-        let res = json!("Hola");
-        println!("{}", res);
-        response.send(BodyTypes::Json(res));
-    });
-
-    server.post("/create", |request, response| {
-        //println!("{:?}", request.body);
-        response.send(BodyTypes::Text("Test".to_string()));
-    });
-
     server.post("/upload", |request, response| {
         let body = request.body_as_bytes();
 
-        let content_type = request.get_header("Content-Type").unwrap();
+        let content_type = request.get_header("Content-Type")?;
 
-        let mut file = File::create("public/test.jpg").unwrap();
-        file.write_all(body).unwrap();
+        let auth = match request.get_header("Authorization") {
+            Ok(auth) => auth,
+            Err(err) => { return Err(err.into()); }
+        };
+
+        let mut file = File::create("public/test.jpeg")?;
+        file.write_all(body)?;
 
         println!("{}", content_type);
         //println!("{:?}", body);
         response.set_header("Content-Type", content_type);
-        response.write(body);
+
+        Ok(response.write(body))
     });
 
     // Start listening

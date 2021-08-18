@@ -1,7 +1,7 @@
 use std::io::prelude::*;
 use std::fs::File;
 use std::time::Instant;
-use std::io::{self, BufReader};
+use std::io::{BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
@@ -10,6 +10,7 @@ use crate::server::{Server, Handler, BodyTypes, HandlerFunction};
 use crate::server::threading::ThreadPool;
 use crate::server::request::{Request, RequestMethods};
 use crate::server::response::Response;
+use crate::server::errors::RequestError;
 
 impl Server {
     pub fn new(host: &str, port: u16) -> Server {
@@ -40,20 +41,20 @@ impl Server {
         }
     }
 
-    pub fn middleware<F>(&mut self, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+    pub fn middleware<F>(&mut self, f: F) where F: Fn(&Request, &mut Response) -> Result<(), RequestError> + Send + Sync + 'static {
         let mut middleware = self.middleware.write().unwrap();
         middleware.push(Box::new(f))
     }
 
-    pub fn get<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+    pub fn get<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) -> Result<(), RequestError> + Send + Sync + 'static {
         self.create_handler(path, RequestMethods::GET, f);
     }
 
-    pub fn post<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+    pub fn post<F>(&mut self, path: &str, f: F) where F: Fn(&Request, &mut Response) -> Result<(), RequestError> + Send + Sync + 'static {
         self.create_handler(path, RequestMethods::POST, f);
     }
 
-    fn create_handler<F>(&mut self, path: &str, method: RequestMethods, f: F) where F: Fn(&Request, &mut Response) + Send + Sync + 'static {
+    fn create_handler<F>(&mut self, path: &str, method: RequestMethods, f: F) where F: Fn(&Request, &mut Response) -> Result<(), RequestError> + Send + Sync + 'static {
         let handler = Handler {
             path: path.to_string(),
             method,
@@ -106,7 +107,10 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
                     handler_exists = true;
                     let handler = &handler.handler;
 
-                    handler(&request, &mut response);
+                    match handler(&request, &mut response) {
+                        Ok(_) => println!("Ok"),
+                        Err(err) => println!("{}", err)
+                    }
                     break;
                 }
             }
@@ -120,41 +124,4 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
         }
         Err(e) => { println!("{}", e); }
     }
-}
-
-fn read_stream(stream: &mut TcpStream) -> (Vec<u8>, usize) {
-
-    let buffer_size = 1024;
-    let mut request_buffer = vec![];
-    let mut request_length = 0usize;
-
-    loop {
-        let mut buffer = vec![0; buffer_size];
-        match stream.read(&mut buffer) {
-            Ok(n) => {
-                if n == 0 {
-                    break;
-                } else {
-                    request_length += n;
-
-                    if n < buffer_size {
-                        println!("Before {}", request_buffer.len());
-                        request_buffer.append(&mut buffer[..n].to_vec());
-                        println!("After {}", request_buffer.len());
-                        break;
-                    } else {
-                        println!("Before {}", request_buffer.len());
-                        request_buffer.append(&mut buffer);
-                        println!("After {}", request_buffer.len());
-                    }
-                }
-            }
-            Err(e) => {
-                println!("Error in reading stream data: {:?}", e);
-                break;
-            }
-        }
-    }
-
-    (request_buffer, request_length)
 }

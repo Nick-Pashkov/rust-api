@@ -1,4 +1,6 @@
 use std::fmt;
+use std::io;
+use std::error::Error;
 
 #[derive(Debug)]
 pub struct RequestError {
@@ -15,5 +17,11 @@ impl RequestError {
 impl fmt::Display for RequestError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Error {} {}", self.message, self.orig)
+    }
+}
+
+impl From<io::Error> for RequestError {
+    fn from(err: io::Error) -> RequestError {
+        RequestError::new(&err.to_string(), "")
     }
 }

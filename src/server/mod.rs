@@ -7,11 +7,10 @@ mod response;
 mod threading;
 mod errors;
 
-use request::RequestMethods;
-use request::Request;
+use request::{Request, RequestMethods};
 use response::Response;
 
-type HandlerFunction = Box<dyn Fn(&Request, &mut Response) + Send + Sync + 'static>;
+type HandlerFunction = Box<dyn Fn(&Request, &mut Response) -> Result<(), errors::RequestError> + Send + Sync + 'static>;
 
 #[derive(Debug)]
 pub enum BodyTypes {

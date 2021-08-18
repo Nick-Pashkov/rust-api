@@ -50,7 +50,6 @@ impl Request {
     pub fn new(reader: &mut BufReader<&TcpStream>) -> Result<Request, RequestError> {
 
         let (method, path) = get_line(reader);
-        println!("{}", method);
 
         let headers = get_headers(reader);
 
@@ -69,8 +68,8 @@ impl Request {
         serde_json::from_str(&body_str).unwrap()
     }
 
-    pub fn get_header(&self, name: &str) -> Option<&String> {
-        self.headers.get(name)
+    pub fn get_header(&self, name: &str) -> Result<&String, RequestError> {
+        self.headers.get(name).ok_or(RequestError::new("Header does not exist", name))
     }
 }
 
