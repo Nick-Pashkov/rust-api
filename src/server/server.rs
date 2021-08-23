@@ -5,6 +5,7 @@ use std::io::{BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
+use regex::Regex;
 
 use crate::server::{Server, Handler, BodyTypes, HandlerFunction};
 use crate::server::threading::ThreadPool;
@@ -85,11 +86,11 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
 
     let mut reader = BufReader::new(&stream);
     
-    let request = Request::new(&mut reader);
+    let mut request = Request::new(&mut reader);
     //std::process::exit(0);
 
     match request {
-        Ok(request) => {
+        Ok(mut request) => {
             let mut handler_exists = false;
             
             let mut response = Response::new(&stream);
@@ -99,14 +100,20 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
 
             // Run middlewares
             for middleware in middlewares.iter() {
-                middleware(&request, &mut response);
+                match middleware(&request, &mut response) {
+                    Ok(res) => res,
+                    Err(err) => { println!("{}", err); }
+                }
             }
 
             for handler in handlers.iter() {
-                if request.path == handler.path && request.method == handler.method {
+                let matches = parse_handler_path(&request, handler);
+
+                if matches.len() > 0 && request.method == handler.method {
                     handler_exists = true;
                     let handler = &handler.handler;
 
+                    request.params = matches;
                     match handler(&request, &mut response) {
                         Ok(_) => println!("Ok"),
                         Err(err) => println!("{}", err)
@@ -124,4 +131,26 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
         }
         Err(e) => { println!("{}", e); }
     }
+}
+
+fn parse_handler_path(request: &Request, handler: &Handler) -> Vec<String> {
+    let path = String::from(&request.path);
+    let parts: Vec<_> = handler.path.split("/").collect();
+    let mut new_parts = Vec::new();
+    for elem in parts.iter() {
+        if *elem == "" { continue; }
+        new_parts.push(format!("({})", elem));
+    }
+    let handler_path = new_parts.join("/");
+    let regex = Regex::new(&format!("^/{}$", handler_path)).unwrap();
+
+    let mut captures: Vec<String> = Vec::new();
+    println!("{:?}", regex.captures(&path));
+    for caps in regex.captures_iter(&path) {
+        for i in 0..caps.len() {
+            captures.push(caps[i].to_string());
+        }
+    }
+
+    captures
 }

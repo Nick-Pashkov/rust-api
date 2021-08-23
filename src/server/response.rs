@@ -44,7 +44,7 @@ impl <'a> Response <'_> {
         self.stream.write(data).unwrap();
     }
 
-    pub fn send(&mut self, data: BodyTypes) -> String {
+    pub fn send(&mut self, data: BodyTypes) {
         let version = "HTTP/1.1";
         let mut headers = String::from("");
 
@@ -72,7 +72,5 @@ impl <'a> Response <'_> {
 
         let response = &format!("{} {} \r\n{}\r\n{}", version, self.status, headers, body);
         self.stream.write(response.as_bytes()).unwrap();
-        
-        String::from(response)
     }
 }

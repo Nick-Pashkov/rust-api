@@ -15,7 +15,7 @@ pub struct Request {
     pub method: RequestMethods,
     pub path: String,
     headers: HashMap<String, String>,
-    //pub params: HashMap<String, String>,
+    pub params: Vec<String>,
     body: Vec<u8>,
    // pub size: usize,
 }
@@ -53,9 +53,15 @@ impl Request {
 
         let headers = get_headers(reader);
 
-        let body = get_body(reader, headers.get("Content-Length").unwrap().parse().unwrap());
+        let content_length = match headers.get("Content-Length") {
+            Some(value) => value.parse().unwrap(),
+            None => 0
+        };
 
-        Ok(Request { method, path, headers, body })
+        let body = get_body(reader, content_length);
+        let params = Vec::new();
+
+        Ok(Request { method, path, headers, body, params })
     }
 
     pub fn body_as_bytes(&self) -> &Vec<u8> {
@@ -104,7 +110,7 @@ fn get_body(reader: &mut BufReader<&TcpStream>, length: usize) -> Vec<u8> {
     return buffer;
 }
 
-fn parse_params(input: String) -> HashMap<String, String> {
+fn _parse_params(input: String) -> HashMap<String, String> {
     let mut params: HashMap<String, String> = HashMap::new();
     if input == "" {
         return params;

@@ -31,6 +31,17 @@ fn main() {
         Ok(response.write(body))
     });
 
+    server.get("/users/[0-9]+", |request, response| {
+        let body = request.body_as_bytes();
+        println!("{:?}", request.params);
+        Ok(response.send(BodyTypes::Text("Digit".to_string())))
+    });
+
+    server.get("/.*", |request, response| {
+        let body = request.body_as_bytes();
+        Ok(response.send(BodyTypes::Text("Ok".to_string())))
+    });
+
     // Start listening
     server.listen(|addr| {
         println!("Server listening on {}", addr);
