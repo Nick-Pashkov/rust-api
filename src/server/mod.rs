@@ -6,6 +6,7 @@ mod request;
 mod response;
 mod threading;
 mod errors;
+mod parser;
 
 use request::{Request, RequestMethods};
 use response::Response;
@@ -14,7 +15,7 @@ type HandlerFunction = Box<dyn Fn(&Request, &mut Response) -> Result<(), errors:
 
 #[derive(Debug)]
 pub enum BodyTypes {
-    Text(String),
+    Text(&'static str),
     Json(JsonValue),
     Bytes(Vec<u8>)
 }

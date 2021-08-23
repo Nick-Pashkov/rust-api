@@ -20,7 +20,7 @@ impl <'a> Response <'_> {
         Response {
             headers: HashMap::new(),
             status: 200,
-            body: BodyTypes::Text("".to_string()),
+            body: BodyTypes::Text(""),
             stream,
         }
     }
@@ -42,35 +42,5 @@ impl <'a> Response <'_> {
         let response = &format!("{} {} \r\n{}\r\n", version, self.status, headers);
         self.stream.write(response.as_bytes()).unwrap();
         self.stream.write(data).unwrap();
-    }
-
-    pub fn send(&mut self, data: BodyTypes) {
-        let version = "HTTP/1.1";
-        let mut headers = String::from("");
-
-        let body: String;
-        match data {
-            BodyTypes::Text(b) => {
-                self.set_header("Content-Type", "text/plain");
-                body = b;
-            },
-            BodyTypes::Json(b) => {
-                self.set_header("Content-Type", "application/json");
-                body = b.to_string();
-            },
-            BodyTypes::Bytes(b) => {
-                self.set_header("Content-Type", "application/octet-stream");
-                self.set_header("Content-Length", &b.len().to_string());
-                body = String::from_utf8(b).unwrap();
-            }
-        }
-
-        for (key, val) in self.headers.iter() {
-            let new_header = format!("{}: {}\r\n", key.to_string(), val.to_string());
-            headers.push_str(&new_header);
-        }
-
-        let response = &format!("{} {} \r\n{}\r\n{}", version, self.status, headers, body);
-        self.stream.write(response.as_bytes()).unwrap();
     }
 }

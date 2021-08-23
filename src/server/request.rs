@@ -15,7 +15,7 @@ pub struct Request {
     pub method: RequestMethods,
     pub path: String,
     headers: HashMap<String, String>,
-    pub params: Vec<String>,
+    pub params: HashMap<String, String>,
     body: Vec<u8>,
    // pub size: usize,
 }
@@ -59,7 +59,7 @@ impl Request {
         };
 
         let body = get_body(reader, content_length);
-        let params = Vec::new();
+        let params = HashMap::new();
 
         Ok(Request { method, path, headers, body, params })
     }

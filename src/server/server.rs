@@ -5,6 +5,7 @@ use std::io::{BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 use regex::Regex;
 
 use crate::server::{Server, Handler, BodyTypes, HandlerFunction};
@@ -12,6 +13,7 @@ use crate::server::threading::ThreadPool;
 use crate::server::request::{Request, RequestMethods};
 use crate::server::response::Response;
 use crate::server::errors::RequestError;
+use crate::server::parser;
 
 impl Server {
     pub fn new(host: &str, port: u16) -> Server {
@@ -107,15 +109,23 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
             }
 
             for handler in handlers.iter() {
-                let matches = parse_handler_path(&request, handler);
+                let handler_regex = Regex::new(&parser::handler_pattern(&handler.path)).unwrap();
 
-                if matches.len() > 0 && request.method == handler.method {
+                let caps = match handler_regex.captures(&request.path) {
+                    None => { continue; }
+                    Some(caps) => caps
+                };
+
+                if request.method == handler.method {
                     handler_exists = true;
                     let handler = &handler.handler;
 
-                    request.params = matches;
+                    for var in handler_regex.capture_names().flatten().filter_map(|n| Some((n, caps.name(n)?.as_str()))) {
+                        request.params.insert(var.0.to_string(), var.1.to_string());
+                    }
+
                     match handler(&request, &mut response) {
-                        Ok(_) => println!("Ok"),
+                        Ok(_) => { break },
                         Err(err) => println!("{}", err)
                     }
                     break;
@@ -124,33 +134,12 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
 
             if !handler_exists {
                 response.status = 404;
-                response.send(BodyTypes::Text(format!("Cannot {} {}", request.method, request.path)));
+                let result = format!("Cannot {} {}", request.method, request.path);
+                response.write(&result.as_bytes().to_vec());
             }
 
             stream.flush().unwrap();
         }
         Err(e) => { println!("{}", e); }
     }
-}
-
-fn parse_handler_path(request: &Request, handler: &Handler) -> Vec<String> {
-    let path = String::from(&request.path);
-    let parts: Vec<_> = handler.path.split("/").collect();
-    let mut new_parts = Vec::new();
-    for elem in parts.iter() {
-        if *elem == "" { continue; }
-        new_parts.push(format!("({})", elem));
-    }
-    let handler_path = new_parts.join("/");
-    let regex = Regex::new(&format!("^/{}$", handler_path)).unwrap();
-
-    let mut captures: Vec<String> = Vec::new();
-    println!("{:?}", regex.captures(&path));
-    for caps in regex.captures_iter(&path) {
-        for i in 0..caps.len() {
-            captures.push(caps[i].to_string());
-        }
-    }
-
-    captures
 }

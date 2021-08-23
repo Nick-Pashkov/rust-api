@@ -10,7 +10,7 @@ use serde_json::json;
 fn main() {
     // Create server
     let mut server = Server::new("127.0.0.1", 4000);
-
+/*
     server.post("/upload", |request, response| {
         let body = request.body_as_bytes();
 
@@ -30,18 +30,24 @@ fn main() {
 
         Ok(response.write(body))
     });
-
-    server.get("/users/[0-9]+", |request, response| {
+*/
+    server.get("/users", |request, response| {
         let body = request.body_as_bytes();
         println!("{:?}", request.params);
-        Ok(response.send(BodyTypes::Text("Digit".to_string())))
+        Ok(response.write(&"Multiple Users".as_bytes().to_vec()))
     });
 
+    server.get("/users/{id}", |request, response| {
+        let body = request.body_as_bytes();
+        println!("{:?}", request.params);
+        Ok(response.write(&"Single User".as_bytes().to_vec()))
+    });
+    /*
     server.get("/.*", |request, response| {
         let body = request.body_as_bytes();
         Ok(response.send(BodyTypes::Text("Ok".to_string())))
     });
-
+    */
     // Start listening
     server.listen(|addr| {
         println!("Server listening on {}", addr);
