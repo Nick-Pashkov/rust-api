@@ -1,9 +1,6 @@
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::collections::HashMap;
-use std::any::Any;
-
-use serde_json::{Value as JsonValue};
 
 use crate::server::BodyTypes;
 

@@ -13,6 +13,7 @@ use response::Response;
 
 type HandlerFunction = Box<dyn Fn(&Request, &mut Response) -> Result<(), errors::RequestError> + Send + Sync + 'static>;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum BodyTypes {
     Text(&'static str),

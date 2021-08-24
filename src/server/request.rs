@@ -1,16 +1,15 @@
 use std::str::FromStr;
 use std::io::prelude::*;
-use std::io::{self, BufReader};
+use std::io::BufReader;
 use std::net::TcpStream;
 use std::result::Result;
 use std::collections::HashMap;
 use std::fmt;
-use serde_json::{Value as JsonValue, json};
-use itertools::join;
+use serde_json::{Value as JsonValue};
 
 use crate::server::errors::RequestError;
-use crate::server::BodyTypes;
 
+#[allow(dead_code)]
 pub struct Request {
     pub method: RequestMethods,
     pub path: String,
@@ -46,6 +45,7 @@ impl fmt::Display for RequestMethods {
     }
 }
 
+#[allow(dead_code)]
 impl Request {
     pub fn new(reader: &mut BufReader<&TcpStream>) -> Result<Request, RequestError> {
 

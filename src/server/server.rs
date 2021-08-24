@@ -1,20 +1,18 @@
 use std::io::prelude::*;
-use std::fs::File;
-use std::time::Instant;
 use std::io::{BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
-use std::collections::HashMap;
 use regex::Regex;
 
-use crate::server::{Server, Handler, BodyTypes, HandlerFunction};
+use crate::server::{Server, Handler, HandlerFunction};
 use crate::server::threading::ThreadPool;
 use crate::server::request::{Request, RequestMethods};
 use crate::server::response::Response;
 use crate::server::errors::RequestError;
 use crate::server::parser;
 
+#[allow(dead_code)]
 impl Server {
     pub fn new(host: &str, port: u16) -> Server {
         let host = String::from(host);
@@ -36,10 +34,10 @@ impl Server {
         f(&addr);
 
         for stream in listener.incoming() {
-            let cloneHandlers = Arc::clone(&self.handlers);
-            let cloneMiddleware = Arc::clone(&self.middleware);
+            let handlers_clone = Arc::clone(&self.handlers);
+            let middleware_clone = Arc::clone(&self.middleware);
             pool.execute(move || {
-                handler(stream.unwrap(), cloneHandlers, cloneMiddleware);
+                handler(stream.unwrap(), handlers_clone, middleware_clone);
             });
         }
     }
@@ -69,26 +67,11 @@ impl Server {
     }
 }
 
-fn get_length(reader: &mut BufReader<TcpStream>) -> usize {
-    let mut str_buff = String::new();
-    loop {
-        reader.read_line(&mut str_buff).unwrap();
-        if str_buff.starts_with("Content-Length") {
-            let res: Vec<&str> = str_buff.split(":").collect();
-
-            reader.read_line(&mut String::new()).unwrap();
-
-            return res[1].trim().parse::<usize>().unwrap();
-        }
-        str_buff = "".to_string();
-    }
-}
-
 fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewares: Arc<RwLock<Vec<HandlerFunction>>>) {
 
     let mut reader = BufReader::new(&stream);
     
-    let mut request = Request::new(&mut reader);
+    let request = Request::new(&mut reader);
     //std::process::exit(0);
 
     match request {
