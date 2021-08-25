@@ -15,6 +15,7 @@ pub struct Request {
     pub path: String,
     headers: HashMap<String, String>,
     pub params: HashMap<String, String>,
+    pub query: HashMap<String, String>,
     body: Vec<u8>,
    // pub size: usize,
 }
@@ -58,10 +59,14 @@ impl Request {
             None => 0
         };
 
+        let (path, query) = parse_query(path);
+
+        println!("{}", path);
+
         let body = get_body(reader, content_length);
         let params = HashMap::new();
 
-        Ok(Request { method, path, headers, body, params })
+        Ok(Request { method, path, headers, body, params, query })
     }
 
     pub fn body_as_bytes(&self) -> &Vec<u8> {
@@ -110,12 +115,17 @@ fn get_body(reader: &mut BufReader<&TcpStream>, length: usize) -> Vec<u8> {
     return buffer;
 }
 
-fn _parse_params(input: String) -> HashMap<String, String> {
+fn parse_query(input: String) -> (String, HashMap<String, String>) {
     let mut params: HashMap<String, String> = HashMap::new();
     if input == "" {
-        return params;
+        return ("".to_string(), params);
     }
-    let params_vec: Vec<&str> = input.split("&").collect();
+    let path_and_params: Vec<&str> = input.split("?").collect();
+    if path_and_params.len() == 1 {
+        return (path_and_params[0].to_string(), params);
+    }
+
+    let params_vec: Vec<&str> = path_and_params[1].split("&").collect();
     for param in params_vec.iter() {
         let param: Vec<&str> = param.split("=").collect();
         let key = param[0];
@@ -124,5 +134,5 @@ fn _parse_params(input: String) -> HashMap<String, String> {
         params.insert(key.to_string(), value.to_string());
     }
 
-    params
+    (path_and_params[0].to_string(), params)
 }

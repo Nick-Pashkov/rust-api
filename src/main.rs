@@ -44,6 +44,11 @@ fn main() {
         println!("{:?}", request.params);
         Ok(response.write(&"Single User".as_bytes().to_vec()))
     });
+
+    server.get("/search", |request, response| {
+        println!("{:?}", request.query);
+        Ok(response.write(&"Search handler".as_bytes().to_vec()))
+    });
     /*
     server.get("/.*", |request, response| {
         let body = request.body_as_bytes();
