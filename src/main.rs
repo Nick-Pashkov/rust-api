@@ -35,18 +35,15 @@ fn main() {
 */
     server.get("/users", |request, response| {
         let body = request.body_as_bytes();
-        println!("{:?}", request.params);
         Ok(response.write(&"Multiple Users".as_bytes().to_vec()))
     });
 
     server.get("/users/{id}", |request, response| {
         let body = request.body_as_bytes();
-        println!("{:?}", request.params);
         Ok(response.write(&"Single User".as_bytes().to_vec()))
     });
 
     server.get("/search", |request, response| {
-        println!("{:?}", request.query);
         Ok(response.write(&"Search handler".as_bytes().to_vec()))
     });
     /*
