@@ -6,10 +6,12 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use serde_json::json;
+mod logger;
 
 fn main() {
     // Create server
     let mut server = Server::new("127.0.0.1", 4000);
+    server.middleware(logger::log_to_file);
 /*
     server.post("/upload", |request, response| {
         let body = request.body_as_bytes();

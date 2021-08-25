@@ -2,10 +2,10 @@ use std::sync::{Arc, RwLock};
 use serde_json::{Value as JsonValue};
 
 mod server;
-mod request;
-mod response;
+pub mod request;
+pub mod response;
 mod threading;
-mod errors;
+pub mod errors;
 mod parser;
 
 use request::{Request, RequestMethods};

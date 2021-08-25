@@ -95,7 +95,7 @@ fn handler(mut stream: TcpStream, handlers: Arc<RwLock<Vec<Handler>>>, middlewar
                 let handler_regex = Regex::new(&parser::handler_pattern(&handler.path)).unwrap();
 
                 let caps = match handler_regex.captures(&request.path) {
-                    None => { continue; }
+                    None => continue,
                     Some(caps) => caps
                 };
 
