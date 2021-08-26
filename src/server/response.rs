@@ -40,4 +40,9 @@ impl <'a> Response <'_> {
         self.stream.write(response.as_bytes()).unwrap();
         self.stream.write(data).unwrap();
     }
+
+    pub fn json(&mut self, data: serde_json::Value) {
+        self.set_header("Content-Type", "application/json");
+        self.write(&data.to_string().as_bytes().to_vec());
+    }
 }

@@ -3,6 +3,7 @@ use std::io::{BufReader};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
+use std::fs;
 use regex::Regex;
 
 use crate::server::{Server, Handler, HandlerFunction};
@@ -22,6 +23,8 @@ impl Server {
         let handlers = Arc::new(RwLock::new(Vec::new()));
 
         let middleware = Arc::new(RwLock::new(Vec::new()));
+
+        fs::create_dir_all("public").expect("Could not create 'public' directory");
 
         Server { host, port, pool_size, handlers, middleware }
     }

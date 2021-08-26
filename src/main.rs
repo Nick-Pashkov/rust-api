@@ -35,7 +35,12 @@ fn main() {
 */
     server.get("/users", |request, response| {
         let body = request.body_as_bytes();
-        Ok(response.write(&"Multiple Users".as_bytes().to_vec()))
+
+        let res = json!({
+            "id": "123123",
+            "name": "Nick Pashkov"
+        });
+        Ok(response.json(res))
     });
 
     server.get("/users/{id}", |request, response| {
